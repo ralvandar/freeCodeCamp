@@ -12,11 +12,11 @@ import {
   Row
 } from '@freecodecamp/react-bootstrap';
 import Helmet from 'react-helmet';
+import { Trans, withTranslation } from 'react-i18next';
 
-import { apiLocation } from '../../config/env.json';
+import Login from '../components/Header/components/Login';
 
 import {
-  hardGoTo as navigate,
   isSignedInSelector,
   userFetchStateSelector,
   userSelector,
@@ -27,8 +27,8 @@ import { Spacer, Loader, FullWidthRow } from '../components/helpers';
 const propTypes = {
   email: PropTypes.string,
   isSignedIn: PropTypes.bool,
-  navigate: PropTypes.func.isRequired,
   reportUser: PropTypes.func.isRequired,
+  t: PropTypes.func.isRequired,
   userFetchState: PropTypes.shape({
     pending: PropTypes.bool,
     complete: PropTypes.bool,
@@ -49,7 +49,6 @@ const mapStateToProps = createSelector(
 );
 
 const mapDispatchToProps = {
-  navigate,
   reportUser
 };
 
@@ -57,19 +56,11 @@ class ShowUser extends Component {
   constructor(props) {
     super(props);
 
-    this.timer = null;
     this.state = {
-      textarea: '',
-      time: 5
+      textarea: ''
     };
     this.handleChange = this.handleChange.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
-  }
-
-  componentWillUnmount() {
-    if (this.timer) {
-      clearInterval(this.timer);
-    }
   }
 
   handleChange(e) {
@@ -86,56 +77,30 @@ class ShowUser extends Component {
     return reportUser({ username, reportDescription });
   }
 
-  setNavigationTimer(navigate) {
-    if (!this.timer) {
-      this.timer = setInterval(() => {
-        if (this.state.time <= 0) {
-          navigate(`${apiLocation}/signin`);
-        }
-        this.setState({ time: this.state.time - 1 });
-      }, 1000);
-    }
-  }
-
   render() {
-    const { username, isSignedIn, userFetchState, email } = this.props;
+    const { username, isSignedIn, userFetchState, email, t } = this.props;
     const { pending, complete, errored } = userFetchState;
     if (pending && !complete) {
       return <Loader fullScreen={true} />;
     }
 
     if ((complete || errored) && !isSignedIn) {
-      const { navigate } = this.props;
-      this.setNavigationTimer(navigate);
       return (
         <main>
           <FullWidthRow>
             <Spacer size={2} />
-            <Panel bsStyle='info'>
+            <Panel bsStyle='info' className='text-center'>
               <Panel.Heading>
                 <Panel.Title componentClass='h3'>
-                  You need to be signed in to report a user
+                  {t('report.sign-in')}
                 </Panel.Title>
               </Panel.Heading>
               <Panel.Body className='text-center'>
-                <Spacer />
-                <p>
-                  You will be redirected to sign in to freeCodeCamp.org
-                  automatically in {this.state.time} seconds
-                </p>
-                <p>
-                  <Button
-                    bsStyle='default'
-                    href='/signin'
-                    onClick={e => {
-                      e.preventDefault();
-                      return navigate(`${apiLocation}/signin`);
-                    }}
-                  >
-                    Or click here if you do not want to wait
-                  </Button>
-                </p>
-                <Spacer />
+                <Spacer size={2} />
+                <Col md={6} mdOffset={3} sm={8} smOffset={2} xs={12}>
+                  <Login block={true}>{t('buttons.click-here')}</Login>
+                </Col>
+                <Spacer size={3} />
               </Panel.Body>
             </Panel>
           </FullWidthRow>
@@ -144,31 +109,29 @@ class ShowUser extends Component {
     }
 
     const { textarea } = this.state;
-    const placeholderText = `Please provide as much detail as possible about the account or behavior you are reporting.`;
+    const placeholderText = t('report.details');
     return (
       <Fragment>
         <Helmet>
-          <title>Report a users portfolio | freeCodeCamp.org</title>
+          <title>{t('report.portfolio')} | freeCodeCamp.org</title>
         </Helmet>
         <Spacer size={2} />
-        <Row className='text-center'>
+        <Row className='text-center overflow-fix'>
           <Col sm={8} smOffset={2} xs={12}>
-            <h2>
-              Do you want to report {username}
-              's portfolio for abuse?
-            </h2>
+            <h2>{t('report.portfolio-2', { username: username })}</h2>
           </Col>
         </Row>
-        <Row>
+        <Row className='overflow-fix'>
           <Col sm={6} smOffset={3} xs={12}>
             <p>
-              We will notify the community moderators' team, and a send copy of
-              this report to your email: <strong>{email}</strong>
+              <Trans email={email} i18nKey='report.notify-1'>
+                <strong>{{ email }}</strong>
+              </Trans>
             </p>
-            <p>We may get back to you for more information, if required.</p>
+            <p>{t('report.notify-2')}</p>
             <form onSubmit={this.handleSubmit}>
               <FormGroup controlId='report-user-textarea'>
-                <ControlLabel>What would you like to report?</ControlLabel>
+                <ControlLabel>{t('report.what')}</ControlLabel>
                 <FormControl
                   componentClass='textarea'
                   onChange={this.handleChange}
@@ -177,7 +140,7 @@ class ShowUser extends Component {
                 />
               </FormGroup>
               <Button block={true} bsStyle='primary' type='submit'>
-                Submit the report
+                {t('report.submit')}
               </Button>
               <Spacer />
             </form>
@@ -191,7 +154,9 @@ class ShowUser extends Component {
 ShowUser.displayName = 'ShowUser';
 ShowUser.propTypes = propTypes;
 
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps
-)(ShowUser);
+export default withTranslation()(
+  connect(
+    mapStateToProps,
+    mapDispatchToProps
+  )(ShowUser)
+);

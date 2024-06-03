@@ -11,18 +11,35 @@ export default function layoutSelector({ element, props }) {
   const {
     location: { pathname }
   } = props;
+
   if (element.type === FourOhFourPage) {
     return <DefaultLayout pathname={pathname}>{element}</DefaultLayout>;
   }
   if (/^\/certification(\/.*)*/.test(pathname)) {
-    return <CertificationLayout>{element}</CertificationLayout>;
+    return (
+      <CertificationLayout pathname={pathname}>{element}</CertificationLayout>
+    );
   }
   if (/^\/guide(\/.*)*/.test(pathname)) {
     console.log('Hitting guide for some reason. Need a redirect.');
   }
-  if (/^\/learn(\/.*)*/.test(pathname)) {
+
+  const splitPath = pathname.split('/');
+  const splitPathThree = splitPath.length > 2 ? splitPath[3] : '';
+
+  const isNotSuperBlockIntro =
+    splitPath.length > 3 && splitPathThree.length > 1;
+
+  if (/^\/learn(\/.*)*/.test(pathname) && isNotSuperBlockIntro) {
     return (
       <DefaultLayout pathname={pathname} showFooter={false}>
+        {element}
+      </DefaultLayout>
+    );
+  }
+  if (/^\/donation(\/.*)*|^\/$|^\/donate(\/.*)*/.test(pathname)) {
+    return (
+      <DefaultLayout pathname={pathname} useTheme={false}>
         {element}
       </DefaultLayout>
     );

@@ -1,9 +1,10 @@
 import debug from 'debug';
-import { check } from 'express-validator/check';
+import { check } from 'express-validator';
 
 import { ifNoUser401, createValidatorErrorHandler } from '../utils/middleware';
 import { themes } from '../../common/utils/themes.js';
 import { alertTypes } from '../../common/utils/flash.js';
+import { isValidUsername } from '../../../utils/validate';
 
 const log = debug('fcc:boot:settings');
 
@@ -47,19 +48,17 @@ export default function settingsController(app) {
   api.put('/update-my-username', ifNoUser401, updateMyUsername);
   api.put('/update-user-flag', ifNoUser401, updateUserFlag);
 
-  app.use('/internal', api);
   app.use(api);
 }
 
 const standardErrorMessage = {
   type: 'danger',
-  message:
-    'Something went wrong updating your account. Please check and try again'
+  message: 'flash.wrong-updating'
 };
 
 const standardSuccessMessage = {
   type: 'success',
-  message: 'We have updated your preferences'
+  message: 'flash.updated-preferences'
 };
 
 const createStandardHandler = (req, res, next) => err => {
@@ -133,7 +132,7 @@ function updateMyTheme(req, res, next) {
   return req.user
     .updateTheme(theme)
     .then(
-      () => res.sendFlash(alertTypes.info, 'Your theme has been updated'),
+      () => res.sendFlash(alertTypes.info, 'Your theme has been updated!'),
       next
     );
 }
@@ -196,15 +195,24 @@ function createUpdateMyUsername(app) {
     if (username === user.username) {
       return res.json({
         type: 'info',
-        message: 'Username is already associated with this account'
+        message: 'flash.username-used'
       });
     }
+    const validation = isValidUsername(username);
+
+    if (!validation.valid) {
+      return res.json({
+        type: 'info',
+        message: `Username ${username} ${validation.error}`
+      });
+    }
+
     const exists = await User.doesExist(username);
 
     if (exists) {
       return res.json({
         type: 'info',
-        message: 'Username is already associated with a different account'
+        message: 'flash.username-taken'
       });
     }
 
@@ -213,9 +221,11 @@ function createUpdateMyUsername(app) {
         res.status(500).json(standardErrorMessage);
         return next(err);
       }
+
       return res.status(200).json({
         type: 'success',
-        message: `We have updated your username to ${username}`
+        message: `flash.username-updated`,
+        variables: { username: username }
       });
     });
   };
@@ -235,12 +245,7 @@ const updatePrivacyTerms = (req, res, next) => {
       res.status(500).json(standardErrorMessage);
       return next(err);
     }
-    return res.status(200).json({
-      type: 'success',
-      message:
-        'We have updated your preferences. ' +
-        'You can now continue using freeCodeCamp.'
-    });
+    return res.status(200).json(standardSuccessMessage);
   });
 };
 

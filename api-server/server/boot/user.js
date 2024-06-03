@@ -2,19 +2,21 @@ import dedent from 'dedent';
 import debugFactory from 'debug';
 import { pick } from 'lodash';
 import { Observable } from 'rx';
+import { body } from 'express-validator';
 
-import { homeLocation } from '../../../config/env';
 import {
   getProgress,
   normaliseUserFields,
   userPropsForSession
 } from '../utils/publicUserProps';
 import { fixCompletedChallengeItem } from '../../common/utils';
-import { ifNoUser401, ifNoUserRedirectTo } from '../utils/middleware';
+import { ifNoUser401, ifNoUserRedirectHome } from '../utils/middleware';
 import { removeCookies } from '../utils/getSetAccessToken';
+import { trimTags } from '../utils/validators';
+import { getRedirectParams } from '../utils/redirection';
 
 const log = debugFactory('fcc:boot:user');
-const sendNonUserToHome = ifNoUserRedirectTo(homeLocation);
+const sendNonUserToHome = ifNoUserRedirectHome();
 
 function bootUser(app) {
   const api = app.loopback.Router();
@@ -29,9 +31,14 @@ function bootUser(app) {
 
   api.post('/account/delete', ifNoUser401, postDeleteAccount);
   api.post('/account/reset-progress', ifNoUser401, postResetProgress);
-  api.post('/user/report-user/', ifNoUser401, postReportUserProfile);
+  api.post(
+    '/user/report-user/',
+    ifNoUser401,
+    body('reportDescription').customSanitizer(trimTags),
+    postReportUserProfile
+  );
 
-  app.use('/internal', api);
+  app.use(api);
 }
 
 function createReadSessionUser(app) {
@@ -39,7 +46,6 @@ function createReadSessionUser(app) {
 
   return function getSessionUser(req, res, next) {
     const queryUser = req.user;
-
     const source =
       queryUser &&
       Observable.forkJoin(
@@ -75,7 +81,8 @@ function createReadSessionUser(app) {
               isLinkedIn: !!user.linkedin,
               isTwitter: !!user.twitter,
               isWebsite: !!user.website,
-              ...normaliseUserFields(user)
+              ...normaliseUserFields(user),
+              joinDate: user.id.getTimestamp()
             }
           },
           sessionMeta,
@@ -93,7 +100,7 @@ function getAccount(req, res) {
 function getUnlinkSocial(req, res, next) {
   const { user } = req;
   const { username } = user;
-
+  const { origin } = getRedirectParams(req);
   let social = req.params.social;
   if (!social) {
     req.flash('danger', 'No social account found');
@@ -144,7 +151,7 @@ function getUnlinkSocial(req, res, next) {
         log(`${social} has been unlinked successfully`);
 
         req.flash('info', `You've successfully unlinked your ${social}.`);
-        return res.redirectWithFlash(`${homeLocation}/${username}`);
+        return res.redirectWithFlash(`${origin}/${username}`);
       });
     });
   });
@@ -162,11 +169,16 @@ function postResetProgress(req, res, next) {
       isJsAlgoDataStructCert: false,
       isApisMicroservicesCert: false,
       isInfosecQaCert: false,
+      isQaCertV7: false,
+      isInfosecCertV7: false,
       is2018FullStackCert: false,
       isFrontEndCert: false,
       isBackEndCert: false,
       isDataVisCert: false,
       isFullStackCert: false,
+      isSciCompPyCertV7: false,
+      isDataAnalysisPyCertV7: false,
+      isMachineLearningPyCertV7: false,
       completedChallenges: []
     },
     function(err) {
@@ -196,22 +208,21 @@ function createPostReportUserProfile(app) {
   const { Email } = app.models;
   return function postReportUserProfile(req, res, next) {
     const { user } = req;
-    const { username } = req.body;
-    const report = req.sanitize('reportDescription').trimTags();
-
+    const { username, reportDescription: report } = req.body;
+    const { origin } = getRedirectParams(req);
     log(username);
     log(report);
 
     if (!username || !report || report === '') {
       return res.json({
         type: 'danger',
-        message: 'Check if you have provided a username and a report'
+        message: 'flash.provide-username'
       });
     }
     return Email.send$(
       {
         type: 'email',
-        to: 'team@freecodecamp.org',
+        to: 'support@freecodecamp.org',
         cc: user.email,
         from: 'team@freecodecamp.org',
         subject: `Abuse Report : Reporting ${username}'s profile.`,
@@ -230,13 +241,14 @@ function createPostReportUserProfile(app) {
       },
       err => {
         if (err) {
-          err.redirectTo = `${homeLocation}/${username}`;
+          err.redirectTo = `${origin}/${username}`;
           return next(err);
         }
 
         return res.json({
-          typer: 'info',
-          message: `A report was sent to the team with ${user.email} in copy.`
+          type: 'info',
+          message: 'flash.report-sent',
+          variables: { email: user.email }
         });
       }
     );

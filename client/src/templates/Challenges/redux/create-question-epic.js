@@ -7,7 +7,6 @@ import {
   challengeMetaSelector
 } from '../redux';
 import { tap, mapTo } from 'rxjs/operators';
-import { helpCategory } from '../../../../utils/challengeTypes';
 import { forumLocation } from '../../../../../config/env.json';
 
 function filesToMarkdown(files = {}) {
@@ -29,7 +28,7 @@ function createQuestionEpic(action$, state$, { window }) {
     tap(() => {
       const state = state$.value;
       const files = challengeFilesSelector(state);
-      const { title: challengeTitle, challengeType } = challengeMetaSelector(
+      const { title: challengeTitle, helpCategory } = challengeMetaSelector(
         state
       );
       const {
@@ -71,15 +70,13 @@ function createQuestionEpic(action$, state$, { window }) {
         \`\`\`
 
         Replace these two sentences with your copied code.
-        Please leave the \`\`\` line above and the \`\`\` line below, 
+        Please leave the \`\`\` line above and the \`\`\` line below,
         because they allow your code to properly format in the post.
 
         \`\`\`\n${endingText}`
       );
 
-      const category = window.encodeURIComponent(
-        helpCategory[challengeType] || 'Help'
-      );
+      const category = window.encodeURIComponent(helpCategory || 'Help');
 
       const studentCode = window.encodeURIComponent(textMessage);
       const altStudentCode = window.encodeURIComponent(altTextMessage);

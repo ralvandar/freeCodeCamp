@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { Grid, Row, Button } from '@freecodecamp/react-bootstrap';
 import Helmet from 'react-helmet';
 import Link from '../helpers/Link';
+import { useTranslation } from 'react-i18next';
 
 import { CurrentChallengeLink, FullWidthRow, Spacer } from '../helpers';
 import Camper from './components/Camper';
@@ -14,12 +15,12 @@ import { apiLocation } from '../../../config/env.json';
 
 const propTypes = {
   isSessionUser: PropTypes.bool,
-  navigate: PropTypes.func.isRequired,
   user: PropTypes.shape({
     profileUI: PropTypes.shape({
       isLocked: PropTypes.bool,
       showAbout: PropTypes.bool,
       showCerts: PropTypes.bool,
+      showDonation: PropTypes.bool,
       showHeatMap: PropTypes.bool,
       showLocation: PropTypes.bool,
       showName: PropTypes.bool,
@@ -28,10 +29,6 @@ const propTypes = {
       showTimeLine: PropTypes.bool
     }),
     calendar: PropTypes.object,
-    streak: PropTypes.shape({
-      current: PropTypes.number,
-      longest: PropTypes.number
-    }),
     completedChallenges: PropTypes.array,
     portfolio: PropTypes.array,
     about: PropTypes.string,
@@ -40,6 +37,7 @@ const propTypes = {
     isLinkedIn: PropTypes.bool,
     isTwitter: PropTypes.bool,
     isWebsite: PropTypes.bool,
+    joinDate: PropTypes.string,
     linkedin: PropTypes.string,
     location: PropTypes.string,
     name: PropTypes.string,
@@ -48,24 +46,19 @@ const propTypes = {
     twitter: PropTypes.string,
     username: PropTypes.string,
     website: PropTypes.string,
-    yearsTopContributor: PropTypes.array
+    yearsTopContributor: PropTypes.array,
+    isDonating: PropTypes.bool
   })
 };
 
-function renderMessage(isSessionUser, username) {
+function renderMessage(isSessionUser, username, t) {
   return isSessionUser ? (
     <Fragment>
       <FullWidthRow>
-        <h2 className='text-center'>
-          You have not made your portfolio public.
-        </h2>
+        <h2 className='text-center'>{t('profile.you-not-public')}</h2>
       </FullWidthRow>
       <FullWidthRow>
-        <p className='alert alert-info'>
-          You need to change your privacy setting in order for your portfolio to
-          be seen by others. This is a preview of how your portfolio will look
-          when made public.
-        </p>
+        <p className='alert alert-info'>{t('profile.you-change-privacy')}</p>
       </FullWidthRow>
       <Spacer />
     </Fragment>
@@ -73,18 +66,17 @@ function renderMessage(isSessionUser, username) {
     <Fragment>
       <FullWidthRow>
         <h2 className='text-center' style={{ overflowWrap: 'break-word' }}>
-          {username} has not made their portfolio public.
+          {t('profile.username-not-public', { username: username })}
         </h2>
       </FullWidthRow>
       <FullWidthRow>
         <p className='alert alert-info'>
-          {username} needs to change their privacy setting in order for you to
-          view their portfolio.
+          {t('profile.username-change-privacy', { username: username })}
         </p>
       </FullWidthRow>
       <Spacer />
       <FullWidthRow>
-        <CurrentChallengeLink>Take me to the Challenges</CurrentChallengeLink>
+        <CurrentChallengeLink>{t('buttons.take-me')}</CurrentChallengeLink>
       </FullWidthRow>
       <Spacer />
     </Fragment>
@@ -96,6 +88,7 @@ function renderProfile(user) {
     profileUI: {
       showAbout = false,
       showCerts = false,
+      showDonation = false,
       showHeatMap = false,
       showLocation = false,
       showName = false,
@@ -105,7 +98,6 @@ function renderProfile(user) {
     },
     calendar,
     completedChallenges,
-    streak,
     githubProfile,
     isLinkedIn,
     isGithub,
@@ -116,12 +108,14 @@ function renderProfile(user) {
     website,
     name,
     username,
+    joinDate,
     location,
     points,
     picture,
     portfolio,
     about,
-    yearsTopContributor
+    yearsTopContributor,
+    isDonating
   } = user;
 
   return (
@@ -129,10 +123,12 @@ function renderProfile(user) {
       <Camper
         about={showAbout ? about : null}
         githubProfile={githubProfile}
+        isDonating={showDonation ? isDonating : null}
         isGithub={isGithub}
         isLinkedIn={isLinkedIn}
         isTwitter={isTwitter}
         isWebsite={isWebsite}
+        joinDate={showAbout ? joinDate : null}
         linkedin={linkedin}
         location={showLocation ? location : null}
         name={showName ? name : null}
@@ -143,7 +139,7 @@ function renderProfile(user) {
         website={website}
         yearsTopContributor={yearsTopContributor}
       />
-      {showHeatMap ? <HeatMap calendar={calendar} streak={streak} /> : null}
+      {showHeatMap ? <HeatMap calendar={calendar} /> : null}
       {showCerts ? <Certifications username={username} /> : null}
       {showPortfolio ? <Portfolio portfolio={portfolio} /> : null}
       {showTimeLine ? (
@@ -154,47 +150,44 @@ function renderProfile(user) {
   );
 }
 
-function Profile({ user, isSessionUser, navigate }) {
+function Profile({ user, isSessionUser }) {
+  const { t } = useTranslation();
   const {
     profileUI: { isLocked = true },
     username
   } = user;
 
-  const createHandleSignoutClick = navigate => e => {
-    e.preventDefault();
-    return navigate(`${apiLocation}/signout`);
-  };
-
   return (
     <Fragment>
       <Helmet>
-        <title>Profile | freeCodeCamp.org</title>
+        <title>{t('buttons.profile')} | freeCodeCamp.org</title>
       </Helmet>
       <Spacer />
       <Grid>
         {isSessionUser ? (
           <FullWidthRow className='button-group'>
             <Link className='btn btn-lg btn-primary btn-block' to='/settings'>
-              Update my settings
+              {t('buttons.update-settings')}
             </Link>
             <Button
               block={true}
               bsSize='lg'
               bsStyle='primary'
               className='btn-invert'
-              href={'/signout'}
-              onClick={createHandleSignoutClick(navigate)}
+              href={`${apiLocation}/signout`}
             >
-              Sign me out of freeCodeCamp
+              {t('buttons.sign-me-out')}
             </Button>
           </FullWidthRow>
         ) : null}
         <Spacer />
-        {isLocked ? renderMessage(isSessionUser, username) : null}
+        {isLocked ? renderMessage(isSessionUser, username, t) : null}
         {!isLocked || isSessionUser ? renderProfile(user) : null}
         {isSessionUser ? null : (
           <Row className='text-center'>
-            <Link to={`/user/${username}/report-user`}>Report This User</Link>
+            <Link to={`/user/${username}/report-user`}>
+              {t('buttons.flag-user')}
+            </Link>
           </Row>
         )}
         <Spacer />

@@ -1,14 +1,9 @@
 /* global expect */
 
 import React from 'react';
-import Enzyme, { shallow } from 'enzyme';
-import Adapter from 'enzyme-adapter-react-16';
-import Link from '../helpers/Link';
-import renderer from 'react-test-renderer';
+import { render } from '@testing-library/react';
 
 import Profile from './Profile';
-
-Enzyme.configure({ adapter: new Adapter() });
 
 const userProps = {
   user: {
@@ -36,6 +31,7 @@ const userProps = {
     isLinkedIn: true,
     isTwitter: true,
     isWebsite: true,
+    joinDate: 'string',
     linkedin: 'string',
     location: 'string',
     name: 'string',
@@ -45,7 +41,8 @@ const userProps = {
     username: 'string',
     website: 'string',
     yearsTopContributor: []
-  }
+  },
+  navigate: () => {}
 };
 
 const myProfileProps = {
@@ -60,29 +57,26 @@ const notMyProfileProps = {
 
 describe('<Profile/>', () => {
   it('renders the settings button on your own profile', () => {
-    const profileToRender = <Profile {...myProfileProps} />;
-    const profile = shallow(profileToRender);
-    expect(
-      profile
-        .find(Link)
-        .first()
-        .prop('to')
-    ).toBe('/settings');
+    const { getByText } = render(<Profile {...myProfileProps} />);
+
+    expect(getByText('buttons.update-settings')).toHaveAttribute(
+      'href',
+      '/settings'
+    );
   });
 
   it('renders the report button on another persons profile', () => {
-    const profileToRender = <Profile {...notMyProfileProps} />;
-    const profile = shallow(profileToRender);
-    expect(
-      profile
-        .find(Link)
-        .first()
-        .prop('to')
-    ).toBe('/user/string/report-user');
+    const { getByText } = render(<Profile {...notMyProfileProps} />);
+
+    expect(getByText('buttons.flag-user')).toHaveAttribute(
+      'href',
+      '/user/string/report-user'
+    );
   });
 
   it('renders correctly', () => {
-    const tree = renderer.create(<Profile {...notMyProfileProps} />).toJSON();
-    expect(tree).toMatchSnapshot();
+    const { container } = render(<Profile {...notMyProfileProps} />);
+
+    expect(container).toMatchSnapshot();
   });
 });

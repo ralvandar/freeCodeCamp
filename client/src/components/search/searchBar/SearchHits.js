@@ -2,7 +2,10 @@ import React, { useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { connectStateResults, connectHits } from 'react-instantsearch-dom';
 import isEmpty from 'lodash/isEmpty';
+import { useTranslation } from 'react-i18next';
+
 import Suggestion from './SearchSuggestion';
+import NoHitsSuggestion from './NoHitsSuggestion';
 
 const CustomHits = connectHits(
   ({
@@ -13,22 +16,26 @@ const CustomHits = connectHits(
     selectedIndex,
     handleHits
   }) => {
+    const { t } = useTranslation();
+    const noHits = isEmpty(hits);
+    const noHitsTitle = t('search.no-tutorials');
     const footer = [
       {
-        objectID: `default-hit-${searchQuery}`,
+        objectID: `footer-${searchQuery}`,
         query: searchQuery,
-        url: `https://freecodecamp.org/news/search/?query=${encodeURIComponent(
-          searchQuery
-        )}`,
-        title: `See all results for ${searchQuery}`,
+        url: noHits
+          ? null
+          : t('search.search-page-url', {
+              searchQuery: encodeURIComponent(searchQuery)
+            }),
+        title: t('search.see-results', { searchQuery: searchQuery }),
         _highlightResult: {
           query: {
             value: `
-            See all results for
-            <ais-highlight-0000000000>
-            ${searchQuery}
-            </ais-highlight-0000000000>
-          `
+              <ais-highlight-0000000000>
+                ${t('search.see-results', { searchQuery: searchQuery })}
+              </ais-highlight-0000000000>
+            `
           }
         }
       }
@@ -44,16 +51,26 @@ const CustomHits = connectHits(
           {allHits.map((hit, i) => (
             <li
               className={
-                i === selectedIndex ? 'ais-Hits-item selected' : 'ais-Hits-item'
+                !noHits && i === selectedIndex
+                  ? 'ais-Hits-item selected'
+                  : 'ais-Hits-item'
               }
               data-fccobjectid={hit.objectID}
               key={hit.objectID}
             >
-              <Suggestion
-                handleMouseEnter={handleMouseEnter}
-                handleMouseLeave={handleMouseLeave}
-                hit={hit}
-              />
+              {noHits ? (
+                <NoHitsSuggestion
+                  handleMouseEnter={handleMouseEnter}
+                  handleMouseLeave={handleMouseLeave}
+                  title={noHitsTitle}
+                />
+              ) : (
+                <Suggestion
+                  handleMouseEnter={handleMouseEnter}
+                  handleMouseLeave={handleMouseLeave}
+                  hit={hit}
+                />
+              )}
             </li>
           ))}
         </ul>

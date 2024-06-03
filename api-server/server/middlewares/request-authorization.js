@@ -6,28 +6,53 @@ import {
   errorTypes,
   authHeaderNS
 } from '../utils/getSetAccessToken';
-import { homeLocation } from '../../../config/env';
 import { jwtSecret as _jwtSecret } from '../../../config/secrets';
 
 import { wrapHandledError } from '../utils/create-handled-error';
+import { getRedirectParams } from '../utils/redirection';
 
-// We need to tunnel through a proxy path set up within
-// the gatsby app, at this time, that path is /internal
-const apiProxyRE = /^\/internal\/|^\/external\//;
-const newsShortLinksRE = /^\/internal\/n\/|^\/internal\/p\?/;
-const loopbackAPIPathRE = /^\/internal\/api\//;
-const showCertRe = /^\/internal\/certificate\/showCert\//;
+const authRE = /^\/auth\//;
+const confirmEmailRE = /^\/confirm-email$/;
+const newsShortLinksRE = /^\/n\/|^\/p\//;
+const publicUserRE = /^\/api\/users\/get-public-profile$/;
+const publicUsernameRE = /^\/api\/users\/exists$/;
+const resubscribeRE = /^\/resubscribe\//;
+const showCertRE = /^\/certificate\/showCert\//;
+// note: signin may not have a trailing slash
+const signinRE = /^\/signin/;
+const statusRE = /^\/status\/ping$/;
+const unsubscribedRE = /^\/unsubscribed\//;
+const unsubscribeRE = /^\/u\/|^\/unsubscribe\/|^\/ue\//;
+const updateHooksRE = /^\/hooks\/update-paypal$|^\/hooks\/update-stripe$/;
 
-const _whiteListREs = [newsShortLinksRE, loopbackAPIPathRE, showCertRe];
+// note: this would be replaced by webhooks later
+const donateRE = /^\/donate\/charge-stripe$/;
 
-export function isWhiteListedPath(path, whiteListREs = _whiteListREs) {
-  return whiteListREs.some(re => re.test(path));
+const _pathsAllowedREs = [
+  authRE,
+  confirmEmailRE,
+  newsShortLinksRE,
+  publicUserRE,
+  publicUsernameRE,
+  resubscribeRE,
+  showCertRE,
+  signinRE,
+  statusRE,
+  unsubscribedRE,
+  unsubscribeRE,
+  updateHooksRE,
+  donateRE
+];
+
+export function isAllowedPath(path, pathsAllowedREs = _pathsAllowedREs) {
+  return pathsAllowedREs.some(re => re.test(path));
 }
 
 export default ({ jwtSecret = _jwtSecret, getUserById = _getUserById } = {}) =>
   function requestAuthorisation(req, res, next) {
+    const { origin } = getRedirectParams(req);
     const { path } = req;
-    if (apiProxyRE.test(path) && !isWhiteListedPath(path)) {
+    if (!isAllowedPath(path)) {
       const { accessToken, error, jwt } = getAccessTokenFromRequest(
         req,
         jwtSecret
@@ -37,7 +62,7 @@ export default ({ jwtSecret = _jwtSecret, getUserById = _getUserById } = {}) =>
           new Error('Access token is required for this request'),
           {
             type: 'info',
-            redirect: `${homeLocation}/signin`,
+            redirect: `${origin}/signin`,
             message: 'Access token is required for this request',
             status: 403
           }
@@ -46,7 +71,7 @@ export default ({ jwtSecret = _jwtSecret, getUserById = _getUserById } = {}) =>
       if (!accessToken && error === errorTypes.invalidToken) {
         throw wrapHandledError(new Error('Access token is invalid'), {
           type: 'info',
-          redirect: `${homeLocation}/signin`,
+          redirect: `${origin}/signin`,
           message: 'Your access token is invalid',
           status: 403
         });
@@ -54,7 +79,7 @@ export default ({ jwtSecret = _jwtSecret, getUserById = _getUserById } = {}) =>
       if (!accessToken && error === errorTypes.expiredToken) {
         throw wrapHandledError(new Error('Access token is no longer valid'), {
           type: 'info',
-          redirect: `${homeLocation}/signin`,
+          redirect: `${origin}/signin`,
           message: 'Access token is no longer valid',
           status: 403
         });

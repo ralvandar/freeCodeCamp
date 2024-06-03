@@ -1,5 +1,7 @@
 import React, { Fragment, Component } from 'react';
 import PropTypes from 'prop-types';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faCheck } from '@fortawesome/free-solid-svg-icons';
 import {
   HelpBlock,
   FormControl,
@@ -7,6 +9,7 @@ import {
   ControlLabel
 } from '@freecodecamp/react-bootstrap';
 import isURL from 'validator/lib/isURL';
+import { withTranslation } from 'react-i18next';
 
 import { maybeUrlRE } from '../../utils';
 
@@ -17,6 +20,7 @@ import BlockSaveButton from '../helpers/form/BlockSaveButton';
 const propTypes = {
   githubProfile: PropTypes.string,
   linkedin: PropTypes.string,
+  t: PropTypes.func.isRequired,
   twitter: PropTypes.string,
   updateInternetSettings: PropTypes.func.isRequired,
   website: PropTypes.string
@@ -63,6 +67,7 @@ class InternetSettings extends Component {
   }
 
   getValidationStateFor(maybeURl = '') {
+    const { t } = this.props;
     if (!maybeURl || !maybeUrlRE.test(maybeURl)) {
       return {
         state: null,
@@ -77,9 +82,7 @@ class InternetSettings extends Component {
     }
     return {
       state: 'error',
-      message:
-        'We could not validate your URL correctly, ' +
-        'please ensure it is correct'
+      message: t('validation.invalid-url')
     };
   }
 
@@ -139,7 +142,20 @@ class InternetSettings extends Component {
     return null;
   };
 
+  renderHelpBlock = validationMessage =>
+    validationMessage ? <HelpBlock>{validationMessage}</HelpBlock> : null;
+
+  renderCheck = (url, validation) =>
+    url && validation === 'success' ? (
+      <FormControl.Feedback>
+        <span>
+          <FontAwesomeIcon icon={faCheck} size='1x' />
+        </span>
+      </FormControl.Feedback>
+    ) : null;
+
   render() {
+    const { t } = this.props;
     const {
       formValues: { githubProfile, linkedin, twitter, website }
     } = this.state;
@@ -166,7 +182,7 @@ class InternetSettings extends Component {
 
     return (
       <Fragment>
-        <SectionHeader>Your Internet Presence</SectionHeader>
+        <SectionHeader>{t('settings.headings.internet')}</SectionHeader>
         <FullWidthRow>
           <form id='internet-presence' onSubmit={this.handleSubmit}>
             <FormGroup
@@ -176,12 +192,12 @@ class InternetSettings extends Component {
               <ControlLabel>GitHub</ControlLabel>
               <FormControl
                 onChange={this.createHandleChange('githubProfile')}
+                placeholder='https://github.com/user-name'
                 type='url'
                 value={githubProfile}
               />
-              {githubProfileValidationMessage ? (
-                <HelpBlock>{githubProfileValidationMessage}</HelpBlock>
-              ) : null}
+              {this.renderCheck(githubProfile, githubProfileValidation)}
+              {this.renderHelpBlock(githubProfileValidationMessage)}
             </FormGroup>
             <FormGroup
               controlId='internet-linkedin'
@@ -190,12 +206,12 @@ class InternetSettings extends Component {
               <ControlLabel>LinkedIn</ControlLabel>
               <FormControl
                 onChange={this.createHandleChange('linkedin')}
+                placeholder='https://www.linkedin.com/in/user-name'
                 type='url'
                 value={linkedin}
               />
-              {linkedinValidationMessage ? (
-                <HelpBlock>{linkedinValidationMessage}</HelpBlock>
-              ) : null}
+              {this.renderCheck(linkedin, linkedinValidation)}
+              {this.renderHelpBlock(linkedinValidationMessage)}
             </FormGroup>
             <FormGroup
               controlId='internet-picture'
@@ -204,26 +220,26 @@ class InternetSettings extends Component {
               <ControlLabel>Twitter</ControlLabel>
               <FormControl
                 onChange={this.createHandleChange('twitter')}
+                placeholder='https://twitter.com/user-name'
                 type='url'
                 value={twitter}
               />
-              {twitterValidationMessage ? (
-                <HelpBlock>{twitterValidationMessage}</HelpBlock>
-              ) : null}
+              {this.renderCheck(twitter, twitterValidation)}
+              {this.renderHelpBlock(twitterValidationMessage)}
             </FormGroup>
             <FormGroup
               controlId='internet-website'
               validationState={websiteValidation}
             >
-              <ControlLabel>Personal Website</ControlLabel>
+              <ControlLabel>{t('settings.labels.personal')}</ControlLabel>
               <FormControl
                 onChange={this.createHandleChange('website')}
+                placeholder='https://example.com'
                 type='url'
                 value={website}
               />
-              {websiteValidationMessage ? (
-                <HelpBlock>{websiteValidationMessage}</HelpBlock>
-              ) : null}
+              {this.renderCheck(website, websiteValidation)}
+              {this.renderHelpBlock(websiteValidationMessage)}
             </FormGroup>
             <BlockSaveButton
               disabled={this.isFormPristine() || !this.isFormValid()}
@@ -238,4 +254,4 @@ class InternetSettings extends Component {
 InternetSettings.displayName = 'InternetSettings';
 InternetSettings.propTypes = propTypes;
 
-export default InternetSettings;
+export default withTranslation()(InternetSettings);

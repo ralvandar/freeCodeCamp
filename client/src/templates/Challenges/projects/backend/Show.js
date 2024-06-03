@@ -5,6 +5,7 @@ import { createSelector } from 'reselect';
 import { connect } from 'react-redux';
 import { graphql } from 'gatsby';
 import Helmet from 'react-helmet';
+import { withTranslation } from 'react-i18next';
 
 import {
   executeChallenge,
@@ -13,10 +14,9 @@ import {
   consoleOutputSelector,
   initConsole,
   initTests,
-  updateBackendFormValues,
+  isChallengeCompletedSelector,
   updateChallengeMeta,
-  updateProjectFormValues,
-  backendNS
+  updateSolutionFormValues
 } from '../../redux';
 import { getGuideUrl } from '../../utils';
 
@@ -28,14 +28,11 @@ import Output from '../../components/Output';
 import CompletionModal from '../../components/CompletionModal';
 import HelpModal from '../../components/HelpModal';
 import ProjectToolPanel from '../Tool-Panel';
-import ProjectForm from '../ProjectForm';
-import { Form } from '../../../../components/formHelpers';
+import SolutionForm from '../SolutionForm';
 import Spacer from '../../../../components/helpers/Spacer';
 import { ChallengeNode } from '../../../../redux/propTypes';
 import { isSignedInSelector } from '../../../../redux';
 import Hotkeys from '../../components/Hotkeys';
-
-import { backend } from '../../../../../utils/challengeTypes';
 
 import '../../components/test-frame.css';
 
@@ -50,25 +47,28 @@ const propTypes = {
   id: PropTypes.string,
   initConsole: PropTypes.func.isRequired,
   initTests: PropTypes.func.isRequired,
+  isChallengeCompleted: PropTypes.bool,
   isSignedIn: PropTypes.bool,
-  output: PropTypes.string,
+  output: PropTypes.arrayOf(PropTypes.string),
   pageContext: PropTypes.shape({
     challengeMeta: PropTypes.object
   }),
+  t: PropTypes.func.isRequired,
   tests: PropTypes.array,
   title: PropTypes.string,
-  updateBackendFormValues: PropTypes.func.isRequired,
   updateChallengeMeta: PropTypes.func.isRequired,
-  updateProjectFormValues: PropTypes.func.isRequired
+  updateSolutionFormValues: PropTypes.func.isRequired
 };
 
 const mapStateToProps = createSelector(
   consoleOutputSelector,
   challengeTestsSelector,
+  isChallengeCompletedSelector,
   isSignedInSelector,
-  (output, tests, isSignedIn) => ({
+  (output, tests, isChallengeCompleted, isSignedIn) => ({
     tests,
     output,
+    isChallengeCompleted,
     isSignedIn
   })
 );
@@ -78,20 +78,8 @@ const mapDispatchToActions = {
   executeChallenge,
   initConsole,
   initTests,
-  updateBackendFormValues,
   updateChallengeMeta,
-  updateProjectFormValues
-};
-
-const formFields = ['solution'];
-const options = {
-  required: ['solution'],
-  types: {
-    solution: 'url'
-  },
-  placeholders: {
-    solution: 'Link to solution, ex: https://codepen.io/camperbot/full/oNvPqqo'
-  }
+  updateSolutionFormValues
 };
 
 export class BackEnd extends Component {
@@ -99,7 +87,6 @@ export class BackEnd extends Component {
     super(props);
     this.state = {};
     this.updateDimensions = this.updateDimensions.bind(this);
-    this.handleSubmit = this.handleSubmit.bind(this);
   }
 
   componentDidMount() {
@@ -119,16 +106,22 @@ export class BackEnd extends Component {
   componentDidUpdate(prevProps) {
     const {
       data: {
-        challengeNode: { title: prevTitle }
+        challengeNode: {
+          title: prevTitle,
+          fields: { tests: prevTests }
+        }
       }
     } = prevProps;
     const {
       data: {
-        challengeNode: { title: currentTitle }
+        challengeNode: {
+          title: currentTitle,
+          fields: { tests: currTests }
+        }
       }
     } = this.props;
-    if (prevTitle !== currentTitle) {
-      this.initializeComponent();
+    if (prevTitle !== currentTitle || prevTests !== currTests) {
+      this.initializeComponent(currentTitle);
     }
   }
 
@@ -141,21 +134,22 @@ export class BackEnd extends Component {
       data: {
         challengeNode: {
           fields: { tests },
-          challengeType
+          title,
+          challengeType,
+          helpCategory
         }
       },
       pageContext: { challengeMeta }
     } = this.props;
-    initConsole('');
+    initConsole();
     initTests(tests);
-    updateChallengeMeta({ ...challengeMeta, challengeType });
+    updateChallengeMeta({
+      ...challengeMeta,
+      title,
+      challengeType,
+      helpCategory
+    });
     challengeMounted(challengeMeta.id);
-  }
-
-  handleSubmit(values) {
-    const { updateBackendFormValues, executeChallenge } = this.props;
-    updateBackendFormValues(values);
-    executeChallenge();
   }
 
   render() {
@@ -167,57 +161,53 @@ export class BackEnd extends Component {
           forumTopicId,
           title,
           description,
-          instructions
+          instructions,
+          superBlock
         }
       },
+      isChallengeCompleted,
       output,
       pageContext: {
-        challengeMeta: { introPath, nextChallengePath, prevChallengePath }
+        challengeMeta: { nextChallengePath, prevChallengePath }
       },
+      t,
       tests,
-      isSignedIn,
       executeChallenge,
-      updateProjectFormValues
+      updateSolutionFormValues
     } = this.props;
 
-    const buttonCopy = isSignedIn
-      ? 'Submit and go to my next challenge'
-      : "I've completed this challenge";
     const blockNameTitle = `${blockName} - ${title}`;
 
     return (
       <Hotkeys
         innerRef={c => (this._container = c)}
-        introPath={introPath}
         nextChallengePath={nextChallengePath}
         prevChallengePath={prevChallengePath}
       >
         <LearnLayout>
-          <Helmet title={`${blockNameTitle} | Learn | freeCodeCamp.org`} />
+          <Helmet
+            title={`${blockNameTitle} | ${t('learn.learn')} | freeCodeCamp.org`}
+          />
           <Grid>
             <Row>
               <Col md={8} mdOffset={2} sm={10} smOffset={1} xs={12}>
                 <Spacer />
-                <ChallengeTitle>{blockNameTitle}</ChallengeTitle>
+                <ChallengeTitle
+                  block={blockName}
+                  isCompleted={isChallengeCompleted}
+                  superBlock={superBlock}
+                >
+                  {title}
+                </ChallengeTitle>
                 <ChallengeDescription
                   description={description}
                   instructions={instructions}
                 />
-                {challengeType === backend ? (
-                  <Form
-                    buttonText={`${buttonCopy}`}
-                    formFields={formFields}
-                    id={backendNS}
-                    options={options}
-                    submit={this.handleSubmit}
-                  />
-                ) : (
-                  <ProjectForm
-                    isFrontEnd={false}
-                    onSubmit={executeChallenge}
-                    updateProjectForm={updateProjectFormValues}
-                  />
-                )}
+                <SolutionForm
+                  challengeType={challengeType}
+                  onSubmit={executeChallenge}
+                  updateSolutionForm={updateSolutionFormValues}
+                />
                 <ProjectToolPanel
                   guideUrl={getGuideUrl({ forumTopicId, title })}
                 />
@@ -225,7 +215,7 @@ export class BackEnd extends Component {
                 <Output
                   defaultOutput={`/**
 *
-* Test output will go here
+* ${t('learn.test-output')}
 *
 *
 */`}
@@ -236,7 +226,7 @@ export class BackEnd extends Component {
                 <TestSuite tests={tests} />
                 <Spacer />
               </Col>
-              <CompletionModal />
+              <CompletionModal blockName={blockName} />
               <HelpModal />
             </Row>
           </Grid>
@@ -252,7 +242,7 @@ BackEnd.propTypes = propTypes;
 export default connect(
   mapStateToProps,
   mapDispatchToActions
-)(BackEnd);
+)(withTranslation()(BackEnd));
 
 export const query = graphql`
   query BackendChallenge($slug: String!) {
@@ -262,6 +252,8 @@ export const query = graphql`
       description
       instructions
       challengeType
+      helpCategory
+      superBlock
       fields {
         blockName
         slug

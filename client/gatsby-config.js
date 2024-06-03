@@ -1,18 +1,28 @@
 const path = require('path');
 
 const {
+  clientLocale,
+  curriculumLocale,
+  homeLocation
+} = require('../config/env');
+const {
   buildChallenges,
   replaceChallengeNode,
   localeChallengesRootDir
 } = require('./utils/buildChallenges');
 
 const curriculumIntroRoot = path.resolve(__dirname, './src/pages');
+const pathPrefix =
+  clientLocale === 'english' || clientLocale === 'chinese'
+    ? ''
+    : '/' + clientLocale;
 
 module.exports = {
   siteMetadata: {
     title: 'freeCodeCamp',
-    siteUrl: 'https://www.freecodecamp.org'
+    siteUrl: homeLocation
   },
+  pathPrefix: pathPrefix,
   plugins: [
     'gatsby-plugin-react-helmet',
     'gatsby-plugin-postcss',
@@ -33,7 +43,7 @@ module.exports = {
       options: {
         name: 'challenges',
         source: buildChallenges,
-        onSourceChange: replaceChallengeNode,
+        onSourceChange: replaceChallengeNode(curriculumLocale),
         curriculumPath: localeChallengesRootDir
       }
     },

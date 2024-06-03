@@ -23,12 +23,17 @@ const superBlockIntro = path.resolve(
   __dirname,
   '../../src/templates/Introduction/SuperBlockIntro.js'
 );
+const video = path.resolve(
+  __dirname,
+  '../../src/templates/Challenges/video/Show.js'
+);
 
 const views = {
   backend,
   classic,
   modern: classic,
-  frontend
+  frontend,
+  video
   // quiz: Quiz
 };
 
@@ -44,39 +49,26 @@ const getPrevChallengePath = (node, index, nodeArray) => {
 
 const getTemplateComponent = challengeType => views[viewTypes[challengeType]];
 
-const getIntroIfRequired = (node, index, nodeArray) => {
-  const next = nodeArray[index + 1];
-  const isEndOfBlock = next && next.node.challengeOrder === 0;
-  let nextSuperBlock = '';
-  let nextBlock = '';
-  if (next) {
-    const { superBlock, block } = next.node;
-    nextSuperBlock = superBlock;
-    nextBlock = block;
-  }
-  return isEndOfBlock
-    ? `/learn/${dasherize(nextSuperBlock)}/${dasherize(nextBlock)}`
-    : '';
-};
-
 exports.createChallengePages = createPage => ({ node }, index, thisArray) => {
   const {
+    superBlock,
+    block,
     fields: { slug },
     required = [],
     template,
     challengeType,
     id
   } = node;
-  if (challengeType === 7) {
-    return null;
-  }
+  // TODO: challengeType === 7 and isPrivate are the same, right? If so, we
+  // should remove one of them.
 
   return createPage({
     path: slug,
     component: getTemplateComponent(challengeType),
     context: {
       challengeMeta: {
-        introPath: getIntroIfRequired(node, index, thisArray),
+        superBlock,
+        block: block,
         template,
         required,
         nextChallengePath: getNextChallengePath(node, index, thisArray),
@@ -114,7 +106,7 @@ exports.createSuperBlockIntroPages = createPage => edge => {
     path: slug,
     component: superBlockIntro,
     context: {
-      superBlock: dasherize(superBlock),
+      superBlock: superBlock,
       slug
     }
   });

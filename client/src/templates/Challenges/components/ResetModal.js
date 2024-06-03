@@ -4,14 +4,16 @@ import { bindActionCreators } from 'redux';
 import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
 import { Button, Modal } from '@freecodecamp/react-bootstrap';
+import { useTranslation } from 'react-i18next';
 
-import ga from '../../../analytics';
 import { isResetModalOpenSelector, closeModal, resetChallenge } from '../redux';
+import { executeGA } from '../../../redux';
 
 import './reset-modal.css';
 
 const propTypes = {
   close: PropTypes.func.isRequired,
+  executeGA: PropTypes.func,
   isOpen: PropTypes.bool.isRequired,
   reset: PropTypes.func.isRequired
 };
@@ -25,7 +27,11 @@ const mapStateToProps = createSelector(
 
 const mapDispatchToProps = dispatch =>
   bindActionCreators(
-    { close: () => closeModal('reset'), reset: () => resetChallenge() },
+    {
+      close: () => closeModal('reset'),
+      executeGA,
+      reset: () => resetChallenge()
+    },
     dispatch
   );
 
@@ -34,8 +40,9 @@ function withActions(...fns) {
 }
 
 function ResetModal({ reset, close, isOpen }) {
+  const { t } = useTranslation();
   if (isOpen) {
-    ga.modalview('/reset-modal');
+    executeGA({ type: 'modal', data: '/reset-modal' });
   }
   return (
     <Modal
@@ -46,16 +53,13 @@ function ResetModal({ reset, close, isOpen }) {
       show={isOpen}
     >
       <Modal.Header className='reset-modal-header' closeButton={true}>
-        <Modal.Title className='text-center'>Reset this lesson?</Modal.Title>
+        <Modal.Title className='text-center'>{t('learn.reset')}</Modal.Title>
       </Modal.Header>
       <Modal.Body className='reset-modal-body'>
         <div className='text-center'>
+          <p>{t('learn.reset-warn')}</p>
           <p>
-            Are you sure you wish to reset this lesson? The editors and tests
-            will be reset.
-          </p>
-          <p>
-            <em>This cannot be undone</em>.
+            <em>{t('learn.reset-warn-2')}</em>.
           </p>
         </div>
       </Modal.Body>
@@ -66,7 +70,7 @@ function ResetModal({ reset, close, isOpen }) {
           bsStyle='danger'
           onClick={withActions(reset, close)}
         >
-          Reset this Lesson
+          {t('buttons.reset-lesson')}
         </Button>
       </Modal.Footer>
     </Modal>
